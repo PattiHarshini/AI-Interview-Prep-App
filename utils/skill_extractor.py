@@ -1,23 +1,40 @@
-import spacy
+import os
+from groq import Groq
+from dotenv import load_dotenv
 
-nlp = spacy.load("en_core_web_sm")
+load_dotenv()
+
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
 
 def extract_skills(resume_text, job_description):
 
-    text = resume_text + " " + job_description
+    prompt = f"""
+Extract all technical skills from the following resume and job description.
 
-    doc = nlp(text)
+Return only a clean comma-separated list of skills.
 
-    skills = set()
+Resume:
+{resume_text}
 
-    for token in doc:
+Job Description:
+{job_description}
 
-        # Capture nouns and proper nouns (often technologies)
-        if token.pos_ in ["PROPN", "NOUN"]:
+Rules:
+- Extract programming languages, frameworks, tools, databases, and technologies.
+- Do NOT include explanations.
+- Return only the skills list.
+"""
 
-            word = token.text.lower()
+    response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.2,
+        max_tokens=200
+    )
 
-            if len(word) > 2:
-                skills.add(word)
+    skills_text = response.choices[0].message.content
 
-    return list(skills)
+    skills = [s.strip() for s in skills_text.split(",") if s.strip()]
+
+    return list(set(skills))
